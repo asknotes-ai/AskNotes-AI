@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,8 +78,8 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
   };
 
   return (
-    <div className="flex flex-col h-full bg-background dark:bg-gray-900">
-      <div className="flex justify-end p-2 border-b">
+    <div className="flex flex-col h-full bg-background dark:bg-background">
+      <div className="flex justify-end p-2 border-b border-border">
         <Button
           variant="outline"
           size="sm"
@@ -94,9 +95,9 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center p-8 rounded-lg max-w-md">
-              <MessageSquare className="mx-auto h-12 w-12 text-blue-600 mb-4" />
+              <MessageSquare className="mx-auto h-12 w-12 text-primary mb-4" />
               <h3 className="text-xl font-semibold mb-2">Your conversation will appear here</h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Ask questions about your document to get started.
               </p>
             </div>
@@ -110,17 +111,17 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
               } items-start gap-2`}
             >
               {message.sender === 'bot' && (
-                <Avatar className="h-8 w-8 bg-blue-600">
-                  <AvatarFallback>
-                    <Bot className="h-4 w-4 text-white" />
+                <Avatar className="h-8 w-8 bg-primary">
+                  <AvatarFallback className="bg-primary-foreground">
+                    <Bot className="h-4 w-4 text-primary" />
                   </AvatarFallback>
                 </Avatar>
               )}
               <div
                 className={`max-w-[85%] p-3 rounded-lg ${
                   message.sender === 'user'
-                    ? 'bg-blue-600 text-white rounded-br-none'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-none'
+                    ? 'bg-primary text-primary-foreground rounded-br-none'
+                    : 'bg-secondary text-secondary-foreground rounded-bl-none'
                 }`}
               >
                 {message.sender === 'bot' ? (
@@ -145,7 +146,9 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
                 )}
                 <p
                   className={`text-xs mt-1 ${
-                    message.sender === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
+                    message.sender === 'user' 
+                      ? 'text-primary-foreground/70' 
+                      : 'text-muted-foreground'
                   }`}
                 >
                   {message.timestamp.toLocaleTimeString([], {
@@ -155,9 +158,9 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
                 </p>
               </div>
               {message.sender === 'user' && (
-                <Avatar className="h-8 w-8 bg-blue-600">
-                  <AvatarFallback>
-                    <User className="h-4 w-4 text-white" />
+                <Avatar className="h-8 w-8 bg-primary">
+                  <AvatarFallback className="bg-primary-foreground">
+                    <User className="h-4 w-4 text-primary" />
                   </AvatarFallback>
                 </Avatar>
               )}
@@ -168,7 +171,7 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
       </div>
 
       <form 
-        className="border-t p-4 flex items-center gap-2 bg-white dark:bg-gray-900"
+        className="border-t border-border p-4 flex items-center gap-2 bg-background dark:bg-background"
         onSubmit={handleSubmit}
       >
         <Input
