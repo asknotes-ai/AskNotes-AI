@@ -42,6 +42,7 @@ Please provide a helpful response that:
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.HUGGING_FACE_API_KEY}`
         },
         body: JSON.stringify({
           inputs: prompt,
