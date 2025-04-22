@@ -61,6 +61,26 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				'cute-pink': {
+					DEFAULT: '#FFC0CB',
+					light: '#FFE4E1',
+					dark: '#FF69B4'
+				},
+				'cute-blue': {
+					DEFAULT: '#87CEEB',
+					light: '#B0E0E6',
+					dark: '#4682B4'
+				},
+				'cute-green': {
+					DEFAULT: '#98FB98',
+					light: '#F0FFF0',
+					dark: '#3CB371'
+				},
+				'cute-lavender': {
+					DEFAULT: '#E6E6FA',
+					light: '#F8F8FF',
+					dark: '#9370DB'
 				}
 			},
 			borderRadius: {
@@ -84,11 +104,21 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'cute-bounce': {
+					'0%, 100%': { transform: 'scale(1)' },
+					'50%': { transform: 'scale(1.05)' },
+				},
+				'subtle-float': {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-5px)' },
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'cute-bounce': 'cute-bounce 1s ease-in-out infinite',
+				'subtle-float': 'subtle-float 2s ease-in-out infinite'
 			}
 		}
 	},

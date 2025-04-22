@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import DocumentUploader from '@/components/DocumentUploader';
 import PDFViewer from '@/components/PDFViewer';
@@ -7,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { extractTextFromPDF } from '@/services/pdfService';
 import { findRelevantContext } from '@/services/pdfService';
 import { generateAnswer } from '@/services/aiService';
-import { FileText, MessageSquare } from 'lucide-react';
+import { FileText, Heart } from 'lucide-react';
 
 const Index = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -54,15 +55,15 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-blue-700 text-white py-6">
+    <div className="min-h-screen bg-gradient-to-br from-cute-blue-light to-cute-pink-light">
+      <header className="bg-cute-lavender text-cute-lavender-dark py-6">
         <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold flex items-center">
-            <FileText className="mr-2" />
-            PDF Knowledge Vault
+          <h1 className="text-3xl font-bold flex items-center justify-center">
+            <Heart className="mr-2 animate-cute-bounce text-cute-pink-dark" />
+            PDF Cuddly Knowledge Vault 🐾
           </h1>
-          <p className="mt-2 text-blue-100">
-            Upload a PDF, then ask questions about its content
+          <p className="mt-2 text-center text-cute-blue-dark">
+            Upload a PDF, and let's explore its adorable contents! 💕
           </p>
         </div>
       </header>

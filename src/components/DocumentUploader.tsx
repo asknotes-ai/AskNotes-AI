@@ -1,7 +1,8 @@
 
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { File } from 'lucide-react';
+import { File, Heart } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface DocumentUploaderProps {
   onFileUpload: (file: File) => void;
@@ -61,9 +62,14 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
 
   return (
     <div
-      className={`border-2 border-dashed rounded-lg p-8 text-center ${
-        isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-      } transition-colors duration-200`}
+      className={cn(
+        "border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 group",
+        isDragging 
+          ? "border-cute-pink-dark bg-cute-pink-light" 
+          : "border-cute-blue-dark bg-cute-blue-light/30",
+        "hover:scale-[1.02] hover:shadow-lg",
+        "animate-subtle-float"
+      )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -75,20 +81,20 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
         accept=".pdf,.ppt,.pptx,.doc,.docx"
         onChange={handleFileSelect}
       />
-      <File className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-      <h3 className="text-lg font-medium mb-2">
-        Drag & drop your document here
+      <Heart className="mx-auto h-16 w-16 text-cute-pink-dark mb-4 group-hover:animate-cute-bounce" />
+      <h3 className="text-lg font-medium mb-2 text-cute-blue-dark">
+        Drag your adorable documents here! 🌈
       </h3>
-      <p className="text-sm text-gray-500 mb-4">or</p>
+      <p className="text-sm text-cute-lavender-dark mb-4">or</p>
       <Button 
         onClick={handleButtonClick} 
         disabled={isLoading}
-        className="bg-blue-600 hover:bg-blue-700"
+        className="bg-cute-green-dark hover:bg-cute-green hover:scale-105 transition-transform"
       >
-        {isLoading ? 'Processing...' : 'Browse files'}
+        {isLoading ? 'Processing...' : 'Browse cute files 💕'}
       </Button>
-      <p className="mt-2 text-xs text-gray-500">
-        Supported formats: PDF, PowerPoint (PPT/PPTX), Word (DOC/DOCX)
+      <p className="mt-2 text-xs text-cute-lavender-dark">
+        Supported cutie formats: PDF, PowerPoint, Word
       </p>
     </div>
   );
