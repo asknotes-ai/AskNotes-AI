@@ -6,7 +6,7 @@ import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { generateAnswer } from '@/services/aiService';
-import { findRelevantContext } from '@/services/pdfService';
+import { findRelevantContext, extractTextFromPDF } from '@/services/pdfService';
 import { useToast } from '@/hooks/use-toast';
 import DocumentUploader from '@/components/DocumentUploader';
 
