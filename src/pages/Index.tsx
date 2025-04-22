@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import DocumentUploader from '@/components/DocumentUploader';
 import PDFViewer from '@/components/PDFViewer';
@@ -22,11 +21,9 @@ const Index = () => {
     
     try {
       let text = '';
-      // For now we'll only handle PDFs, later we can add support for other file types
       if (file.type === 'application/pdf') {
         text = await extractTextFromPDF(file);
       } else {
-        // For demonstration, we'll show that other file types are recognized but not yet supported
         console.log('File type detected:', file.type);
         text = 'Document type support coming soon. Currently only PDF files are fully supported.';
       }
@@ -42,12 +39,8 @@ const Index = () => {
 
   const handleAskQuestion = async (question: string): Promise<string> => {
     try {
-      // Find relevant context from the PDF text
       const context = findRelevantContext(pdfText, question);
-      
-      // Generate an answer based on the context and question
       const answer = await generateAnswer(context, question);
-      
       return answer;
     } catch (error) {
       console.error('Error answering question:', error);
@@ -79,7 +72,7 @@ const Index = () => {
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white p-6 rounded-lg shadow-sm">
               <h2 className="text-xl font-semibold mb-4">Upload Document</h2>
-              <PDFUploader onFileUpload={handleFileUpload} isLoading={isLoading} />
+              <DocumentUploader onFileUpload={handleFileUpload} isLoading={isLoading} />
               
               {pdfFile && (
                 <div className="mt-4 flex justify-end">
