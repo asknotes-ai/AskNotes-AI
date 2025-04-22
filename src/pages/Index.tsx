@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { FileText, Heart, MessageSquare } from 'lucide-react';
 import DocumentUploader from '@/components/DocumentUploader';
@@ -6,12 +7,13 @@ import ChatInterface from '@/components/ChatInterface';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { extractTextFromPDF } from '@/services/pdfService';
-import { findRelevantContext } from '@/services/pdfService';
 import { generateAnswer } from '@/services/aiService';
+import { PageContent } from '@/types/pdf';
 
 const Index = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfText, setPdfText] = useState<string>('');
+  const [pageContents, setPageContents] = useState<PageContent[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('viewer');
 
@@ -21,14 +23,19 @@ const Index = () => {
     
     try {
       let text = '';
+      let pages: PageContent[] = [];
+      
       if (file.type === 'application/pdf') {
-        text = await extractTextFromPDF(file);
+        const result = await extractTextFromPDF(file);
+        text = result.fullText;
+        pages = result.pageContents;
       } else {
         console.log('File type detected:', file.type);
         text = 'Document type support coming soon. Currently only PDF files are fully supported.';
       }
       
       setPdfText(text);
+      setPageContents(pages);
       console.log('Extracted text length:', text.length);
     } catch (error) {
       console.error('Error extracting text:', error);
@@ -39,8 +46,8 @@ const Index = () => {
 
   const handleAskQuestion = async (question: string): Promise<string> => {
     try {
-      const context = findRelevantContext(pdfText, question);
-      const answer = await generateAnswer(context, question);
+      const { context, pages } = findRelevantContext(pdfText, pageContents, question);
+      const answer = await generateAnswer(context, pages, question);
       return answer;
     } catch (error) {
       console.error('Error answering question:', error);
@@ -51,6 +58,73 @@ const Index = () => {
   const clearPDF = () => {
     setPdfFile(null);
     setPdfText('');
+    setPageContents([]);
+  };
+
+  // Helper function to find relevant context
+  const findRelevantContext = (
+    text: string,
+    pages: PageContent[],
+    query: string
+  ): { context: string, pages: number[] } => {
+    if (!text || text.trim() === '') {
+      return { context: '', pages: [] };
+    }
+    
+    // Normalize the query/search term
+    const searchTerm = query.toLowerCase().trim();
+    
+    // Split text into paragraphs
+    const paragraphs = text.split(/\n\n+/).filter(p => p.trim().length > 0);
+    
+    // Find paragraphs that contain the exact topic
+    const exactMatches = paragraphs.filter(paragraph => {
+      const paragraphLower = paragraph.toLowerCase();
+      // Look for topic definitions (e.g., "Bots:", "1. Bots", "• Bots")
+      const topicPattern = new RegExp(`(^|\\n|\\d+\\.|•|\\*)\\s*${searchTerm}\\b[:\\s]`, 'i');
+      return topicPattern.test(paragraph);
+    });
+
+    let relevantParagraphs: string[] = [];
+    if (exactMatches.length > 0) {
+      relevantParagraphs = exactMatches;
+    } else {
+      // If no exact topic match, find paragraphs containing the term
+      const relatedMatches = paragraphs.filter(paragraph => {
+        const paragraphLower = paragraph.toLowerCase();
+        return paragraphLower.includes(searchTerm);
+      });
+      
+      if (relatedMatches.length > 0) {
+        relevantParagraphs = relatedMatches;
+      }
+    }
+    
+    // If no relevant paragraphs, return empty
+    if (relevantParagraphs.length === 0) {
+      return { 
+        context: `No specific information found about "${searchTerm}" in the document.`,
+        pages: [] 
+      };
+    }
+    
+    // Find page numbers for each matched paragraph
+    const matchedPages: number[] = [];
+    for (const paragraph of relevantParagraphs) {
+      for (const pageContent of pages) {
+        if (pageContent.text.includes(paragraph.substring(0, 100))) { // Using substring for partial matching
+          if (!matchedPages.includes(pageContent.pageNum)) {
+            matchedPages.push(pageContent.pageNum);
+          }
+          break;
+        }
+      }
+    }
+    
+    return {
+      context: relevantParagraphs.join('\n\n'),
+      pages: matchedPages.sort((a, b) => a - b)
+    };
   };
 
   return (
@@ -93,8 +167,11 @@ const Index = () => {
                   <p className="mb-2">
                     <span className="font-medium">Size:</span> {pdfFile ? `${(pdfFile.size / 1024 / 1024).toFixed(2)} MB` : ''}
                   </p>
-                  <p>
+                  <p className="mb-2">
                     <span className="font-medium">Text Length:</span> {pdfText.length.toLocaleString()} characters
+                  </p>
+                  <p>
+                    <span className="font-medium">Pages:</span> {pageContents.length}
                   </p>
                 </div>
               </div>

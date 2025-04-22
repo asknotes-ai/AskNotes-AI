@@ -1,14 +1,21 @@
+
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set the PDF.js worker path
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
+// Interface for text content with page information
+interface PageContent {
+  text: string;
+  pageNum: number;
+}
+
 /**
- * Extracts text from a PDF file
+ * Extracts text from a PDF file with page tracking
  * @param file The PDF file to extract text from
- * @returns A promise that resolves to the extracted text
+ * @returns A promise that resolves to the extracted text and page mapping
  */
-export const extractTextFromPDF = async (file: File): Promise<string> => {
+export const extractTextFromPDF = async (file: File): Promise<{ fullText: string, pageContents: PageContent[] }> => {
   try {
     const arrayBuffer = await file.arrayBuffer();
     const typedArray = new Uint8Array(arrayBuffer);
@@ -19,6 +26,7 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
     
     // Extract text from each page
     let fullText = '';
+    const pageContents: PageContent[] = [];
     
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
@@ -26,10 +34,16 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
       const textItems = textContent.items.map(item => 'str' in item ? item.str : '');
       const pageText = textItems.join(' ');
       
+      // Store page content with page number
+      pageContents.push({
+        text: pageText,
+        pageNum: pageNum
+      });
+      
       fullText += pageText + '\n\n';
     }
     
-    return fullText.trim();
+    return { fullText: fullText.trim(), pageContents };
   } catch (error) {
     console.error('Error extracting text from PDF:', error);
     throw new Error('Failed to extract text from PDF');
@@ -39,12 +53,17 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
 /**
  * Find relevant context from PDF text based on user's question
  * @param pdfText The full PDF text
+ * @param pageContents The page content mapping
  * @param question The user's question
- * @returns Relevant context from the PDF
+ * @returns Relevant context from the PDF with page references
  */
-export const findRelevantContext = (pdfText: string, question: string): string => {
+export const findRelevantContext = (
+  pdfText: string, 
+  pageContents: PageContent[], 
+  question: string
+): { context: string, pages: number[] } => {
   if (!pdfText || pdfText.trim() === '') {
-    return '';
+    return { context: '', pages: [] };
   }
   
   // Normalize the question/search term
@@ -61,21 +80,46 @@ export const findRelevantContext = (pdfText: string, question: string): string =
     return topicPattern.test(paragraph);
   });
 
+  let relevantParagraphs: string[] = [];
   if (exactMatches.length > 0) {
-    return exactMatches.join('\n\n');
+    relevantParagraphs = exactMatches;
+  } else {
+    // If no exact topic match, find paragraphs containing the term
+    const relatedMatches = paragraphs.filter(paragraph => {
+      const paragraphLower = paragraph.toLowerCase();
+      return paragraphLower.includes(searchTerm);
+    });
+    
+    if (relatedMatches.length > 0) {
+      relevantParagraphs = relatedMatches;
+    }
   }
   
-  // If no exact topic match, find paragraphs containing the term
-  const relatedMatches = paragraphs.filter(paragraph => {
-    const paragraphLower = paragraph.toLowerCase();
-    return paragraphLower.includes(searchTerm);
-  });
-  
-  if (relatedMatches.length > 0) {
-    return relatedMatches.join('\n\n');
+  // If no relevant paragraphs, return message
+  if (relevantParagraphs.length === 0) {
+    return { 
+      context: `No specific information found about "${searchTerm}" in the document.`,
+      pages: [] 
+    };
   }
   
-  return `No specific information found about "${searchTerm}" in the document.`;
+  // Find page numbers for each matched paragraph
+  const matchedPages: number[] = [];
+  for (const paragraph of relevantParagraphs) {
+    for (const pageContent of pageContents) {
+      if (pageContent.text.includes(paragraph.substring(0, 100))) { // Using substring for partial matching
+        if (!matchedPages.includes(pageContent.pageNum)) {
+          matchedPages.push(pageContent.pageNum);
+        }
+        break;
+      }
+    }
+  }
+  
+  return {
+    context: relevantParagraphs.join('\n\n'),
+    pages: matchedPages.sort((a, b) => a - b)
+  };
 };
 
 /**
@@ -117,25 +161,33 @@ const extractKeywords = (question: string): string[] => {
 /**
  * Simple function to answer questions about the PDF content
  * @param pdfText The full PDF text
+ * @param pageContents The page content mapping
  * @param question The user's question
  * @returns An answer to the question based on the PDF content
  */
-export const answerQuestion = async (pdfText: string, question: string): Promise<string> => {
+export const answerQuestion = async (
+  pdfText: string, 
+  pageContents: PageContent[], 
+  question: string
+): Promise<string> => {
   try {
     if (!pdfText || pdfText.trim() === '') {
       return "I don't see any text in the PDF. Please upload a valid PDF with text content.";
     }
     
     // Find relevant context
-    const context = findRelevantContext(pdfText, question);
+    const { context, pages } = findRelevantContext(pdfText, pageContents, question);
     
     if (!context || context.trim() === '') {
       return "I couldn't find information related to your question in the PDF. Could you try asking something else?";
     }
     
     // Simple answer generation (normally would use a language model here)
-    // For now, we'll just return relevant context with a prefix
-    return `Based on the PDF content: ${context}`;
+    const pagesInfo = pages.length > 0 
+      ? `\n\nThis information can be found on page${pages.length > 1 ? 's' : ''} ${pages.join(', ')}.` 
+      : '';
+    
+    return `Based on the PDF content: ${context}${pagesInfo}`;
   } catch (error) {
     console.error('Error answering question:', error);
     return "I encountered an error while processing your question. Please try again.";

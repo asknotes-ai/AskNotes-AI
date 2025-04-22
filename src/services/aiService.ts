@@ -1,15 +1,33 @@
-/**
- * Service for interacting with Hugging Face Inference API to answer questions
- */
 
 /**
- * Answers a question based on provided context using a language model
+ * Service for interacting with local AI models and providing enhanced responses
+ */
+
+import { PageContent } from '@/types/pdf';
+ 
+/**
+ * Find external resources related to a topic
+ * @param topic The topic to search for
+ * @returns An object containing links to Google and YouTube
+ */
+export const findExternalResources = (topic: string): { google: string, youtube: string } => {
+  const encodedTopic = encodeURIComponent(topic);
+  return {
+    google: `https://www.google.com/search?q=${encodedTopic}`,
+    youtube: `https://www.youtube.com/results?search_query=${encodedTopic}`
+  };
+};
+
+/**
+ * Answers a question based on provided context using a local language model
  * @param context The context from the PDF to base the answer on
+ * @param pages Page numbers where the information was found
  * @param question The user's question
  * @returns A promise that resolves to the model's answer
  */
 export const generateAnswer = async (
   context: string,
+  pages: number[],
   question: string
 ): Promise<string> => {
   try {
@@ -17,104 +35,40 @@ export const generateAnswer = async (
       return "I don't see any content to work with in the document yet. Could you try uploading a document first? I'd love to help answer your questions! 🤗";
     }
 
-    // Enhanced prompt for more friendly and detailed responses
-    const prompt = `<s>[INST] You are a friendly and knowledgeable assistant who loves to help people understand documents. 
-Your responses should be:
-- Warm and engaging, using a friendly tone
-- Well-structured with bullet points or sections when appropriate
-- Detailed but clear, avoiding jargon unless necessary
-- Adding emoji occasionally to keep things light (but not too many!)
-
-Context from the document: ${context}
-
-Question: ${question}
-
-Please provide a helpful response that:
-1. Starts with a friendly greeting or acknowledgment
-2. Directly addresses the question using information from the context
-3. Adds relevant examples or explanations when helpful
-4. Organizes information in an easy-to-read format
-5. Ends with an invitation for follow-up questions if needed [/INST]`;
-
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.HUGGING_FACE_API_KEY}`
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 800, // Increased for more detailed responses
-            temperature: 0.4, // Slightly reduced for more focused responses
-            top_p: 0.95,
-            do_sample: true,
-            repetition_penalty: 1.15, // Added to reduce repetitive phrases
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      console.warn("AI API unavailable, using enhanced local answering");
-      return enhancedLocalAnswering(context, question);
-    }
-
-    const result = await response.json();
+    // For now, use enhanced local answering as the default approach
+    // This can be replaced with a locally hosted model like llama.cpp or similar
+    const answer = enhancedLocalAnswering(context, pages, question);
     
-    if (Array.isArray(result) && result.length > 0 && result[0].generated_text) {
-      const fullResponse = result[0].generated_text;
-      const answerPart = fullResponse.split("[/INST]")[1]?.trim() || fullResponse;
-      return formatResponse(answerPart);
-    }
+    // Find external resources related to the question
+    const { google, youtube } = findExternalResources(question);
     
-    return enhancedLocalAnswering(context, question);
+    // Format the response with external resources
+    const externalResourcesSection = `\n\n🔍 External resources for further study:\n- [Google Search](${google})\n- [YouTube Videos](${youtube})`;
+    
+    return answer + externalResourcesSection;
   } catch (error) {
     console.error("Error generating answer:", error);
-    return enhancedLocalAnswering(context, question);
+    return enhancedLocalAnswering(context, pages, question);
   }
 };
 
-// New helper function to format responses nicely
-const formatResponse = (response: string): string => {
-  // Add emoji based on content type
-  let formattedResponse = response;
-  
-  // Add emoji for different types of responses
-  if (response.toLowerCase().includes('summary')) {
-    formattedResponse = "📑 " + formattedResponse;
-  } else if (response.toLowerCase().includes('example')) {
-    formattedResponse = "💡 " + formattedResponse;
-  } else if (response.toLowerCase().includes('important')) {
-    formattedResponse = "⭐ " + formattedResponse;
-  } else {
-    formattedResponse = "🤓 " + formattedResponse;
-  }
-  
-  // Add a friendly closing if it doesn't already have one
-  if (!formattedResponse.toLowerCase().includes('let me know') && 
-      !formattedResponse.toLowerCase().includes('feel free')) {
-    formattedResponse += "\n\n✨ Feel free to ask if you need any clarification!";
-  }
-  
-  return formattedResponse;
-};
-
-// Enhanced local answering function for when API is unavailable
-const enhancedLocalAnswering = (context: string, question: string): string => {
+// Enhanced local answering function
+const enhancedLocalAnswering = (context: string, pages: number[], question: string): string => {
   const questionType = identifyQuestionType(question);
-  const relevantContext = findRelevantContext(context, question);
   
   let response = "👋 Here's what I found in the document:\n\n";
   
   if (questionType === 'summary') {
-    response = "📚 Here's a friendly summary:\n\n" + generateSummary(relevantContext);
+    response = "📚 Here's a friendly summary:\n\n" + generateSummary(context);
   } else if (questionType === 'specific') {
-    response = "🔍 I found this specific information:\n\n" + relevantContext;
+    response = "🔍 I found this specific information:\n\n" + context;
   } else {
-    response = "💡 Based on the document:\n\n" + relevantContext;
+    response = "💡 Based on the document:\n\n" + context;
+  }
+  
+  // Add page references if available
+  if (pages.length > 0) {
+    response += `\n\n📄 This information can be found on page${pages.length > 1 ? 's' : ''} ${pages.join(', ')}.`;
   }
   
   return response + "\n\n✨ Let me know if you'd like to know more!";
@@ -145,84 +99,6 @@ const generateSummary = (context: string): string => {
   return `${paragraphs[0]}\n\n🔑 Key points:\n${
     paragraphs.slice(1).map(p => `• ${p.trim()}`).join('\n')
   }`;
-};
-
-/**
- * Find relevant context from PDF text based on user's question
- * @param pdfText The full PDF text
- * @param question The user's question
- * @returns Relevant context from the PDF
- */
-const findRelevantContext = (pdfText: string, question: string): string => {
-  if (!pdfText || pdfText.trim() === '') {
-    return '';
-  }
-  
-  // Normalize the question
-  const questionLower = question.toLowerCase().trim();
-  
-  // Check if it's a summarization request
-  if (questionLower.includes('summarize') || questionLower.includes('summary')) {
-    return pdfText.length > 8000 ? pdfText.substring(0, 8000) : pdfText;
-  }
-  
-  // Extract keywords from the question
-  const keywords = extractKeywords(questionLower);
-  
-  // If no keywords were found, return a chunk of the document
-  if (keywords.length === 0) {
-    console.log("No keywords found in question");
-    return pdfText.length > 5000 ? pdfText.substring(0, 5000) : pdfText;
-  }
-  
-  console.log("Keywords extracted:", keywords);
-  
-  // Split text into paragraphs
-  const paragraphs = pdfText.split(/\n\n+/).filter(p => p.trim().length > 0);
-  
-  // Score each paragraph based on keyword matches
-  const scoredParagraphs = paragraphs.map(paragraph => {
-    const paragraphLower = paragraph.toLowerCase();
-    let score = 0;
-    
-    // Score based on keyword frequency
-    keywords.forEach(keyword => {
-      const regex = new RegExp(keyword, 'gi');
-      const matches = paragraphLower.match(regex);
-      if (matches) {
-        score += matches.length;
-      }
-    });
-    
-    // Bonus points for paragraphs that contain multiple keywords
-    let uniqueKeywordsFound = 0;
-    keywords.forEach(keyword => {
-      if (paragraphLower.includes(keyword)) {
-        uniqueKeywordsFound++;
-      }
-    });
-    
-    score += uniqueKeywordsFound * 2; // Boost paragraphs with multiple keywords
-    
-    return { paragraph, score };
-  });
-  
-  // Sort by relevance score and take top results
-  const topParagraphs = scoredParagraphs
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5) // Increase the number of paragraphs for better context
-    .filter(item => item.score > 0)
-    .map(item => item.paragraph);
-  
-  console.log(`Found ${topParagraphs.length} relevant paragraphs`);
-  
-  // If no relevant paragraphs found, return a portion of the text
-  if (topParagraphs.length === 0) {
-    return pdfText.length > 5000 ? pdfText.substring(0, 5000) : pdfText;
-  }
-  
-  // Return the combined context
-  return topParagraphs.join('\n\n');
 };
 
 /**
@@ -282,45 +158,4 @@ const extractPhrases = (question: string): string[] => {
   }
   
   return [...phrases, cleanedQuestion];
-};
-
-/**
- * Simplified answering function for when the AI API is unavailable
- * @deprecated Use enhancedLocalAnswering instead
- */
-const simplifiedAnswering = (context: string, question: string): string => {
-  const questionLower = question.toLowerCase();
-  const contextLower = context.toLowerCase();
-  
-  // Find relevant sentences from the context
-  const sentences = context.split(/[.!?]+/).filter(s => s.trim().length > 0);
-  
-  // Get keywords from the question
-  const keywords = questionLower
-    .replace(/[^\w\s]/g, '')
-    .split(' ')
-    .filter(word => word.length > 3 && !['what', 'when', 'where', 'which', 'who', 'whom', 'whose', 'why', 'how', 'does', 'did', 'about', 'with'].includes(word));
-  
-  // Find most relevant sentence
-  const mostRelevantSentence = sentences.reduce(
-    (best, current) => {
-      const currentLower = current.toLowerCase();
-      let score = 0;
-      
-      keywords.forEach(keyword => {
-        if (currentLower.includes(keyword)) {
-          score += 1;
-        }
-      });
-      
-      return score > best.score ? { sentence: current, score } : best;
-    },
-    { sentence: "", score: 0 }
-  );
-  
-  if (mostRelevantSentence.score === 0) {
-    return "I couldn't find specific information about that in the document. Could you try rephrasing your question?";
-  }
-  
-  return `Based on the document: ${mostRelevantSentence.sentence}`;
 };

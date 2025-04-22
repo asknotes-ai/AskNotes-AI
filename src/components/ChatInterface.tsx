@@ -2,7 +2,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, MessageSquare } from 'lucide-react';
+import { Search, MessageSquare, ExternalLink } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   id: string;
@@ -77,6 +78,11 @@ const ChatInterface = ({ pdfText, onAskQuestion, isLoading }: ChatInterfaceProps
     }
   };
 
+  // This handles markdown links in the bot responses
+  const handleLinkClick = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-white">
       <div className="p-4 border-b bg-blue-600 text-white">
@@ -95,13 +101,32 @@ const ChatInterface = ({ pdfText, onAskQuestion, isLoading }: ChatInterfaceProps
             }`}
           >
             <div
-              className={`max-w-[80%] p-3 rounded-lg ${
+              className={`max-w-[85%] p-3 rounded-lg ${
                 message.sender === 'user'
                   ? 'bg-blue-600 text-white rounded-br-none'
                   : 'bg-gray-100 text-gray-800 rounded-bl-none'
               }`}
             >
-              <p className="text-sm">{message.text}</p>
+              {message.sender === 'bot' ? (
+                <div className="text-sm markdown-content">
+                  <ReactMarkdown
+                    components={{
+                      a: ({ href, children }) => (
+                        <button
+                          onClick={() => handleLinkClick(href || '')}
+                          className="text-blue-600 hover:underline flex items-center"
+                        >
+                          {children} <ExternalLink className="ml-1 h-3 w-3" />
+                        </button>
+                      ),
+                    }}
+                  >
+                    {message.text}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <p className="text-sm">{message.text}</p>
+              )}
               <p
                 className={`text-xs mt-1 ${
                   message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
