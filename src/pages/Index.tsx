@@ -1,5 +1,5 @@
-
 import { useState } from 'react';
+import { FileText, Heart, MessageSquare } from 'lucide-react';
 import DocumentUploader from '@/components/DocumentUploader';
 import PDFViewer from '@/components/PDFViewer';
 import ChatInterface from '@/components/ChatInterface';
@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { extractTextFromPDF } from '@/services/pdfService';
 import { findRelevantContext } from '@/services/pdfService';
 import { generateAnswer } from '@/services/aiService';
-import { FileText, Heart } from 'lucide-react';
 
 const Index = () => {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
