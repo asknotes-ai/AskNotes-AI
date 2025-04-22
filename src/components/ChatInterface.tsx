@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +22,7 @@ const ChatInterface = ({ pdfText, onAskQuestion, isLoading }: ChatInterfaceProps
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Hello! I can answer questions about the uploaded PDF. What would you like to know?',
+      text: '👋 Hello! I am AskNoteBot. I can help you understand your document better. What would you like to know?',
       sender: 'bot',
       timestamp: new Date(),
     },

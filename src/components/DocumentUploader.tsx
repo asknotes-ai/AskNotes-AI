@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { File, Heart } from 'lucide-react';
+import { File, Heart, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -81,9 +81,9 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
         accept=".pdf"
         onChange={handleFileSelect}
       />
-      <Heart className="mx-auto h-16 w-16 text-cute-pink-dark mb-4 group-hover:animate-cute-bounce" />
+      <FileText className="mx-auto h-16 w-16 text-cute-pink-dark mb-4 group-hover:animate-cute-bounce" />
       <h3 className="text-lg font-medium mb-2 text-cute-blue-dark">
-        Drag your adorable documents here! 🌈
+        📄 Drop your document here
       </h3>
       <p className="text-sm text-cute-lavender-dark mb-4">or</p>
       <Button 
@@ -91,10 +91,10 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
         disabled={isLoading}
         className="bg-cute-green-dark hover:bg-cute-green hover:scale-105 transition-transform"
       >
-        {isLoading ? 'Processing...' : 'Browse cute files 💕'}
+        {isLoading ? 'Processing...' : 'Choose File'}
       </Button>
       <p className="mt-2 text-xs text-cute-lavender-dark">
-        Supported cutie formats: PDF
+        Supported formats: PDF
       </p>
     </div>
   );

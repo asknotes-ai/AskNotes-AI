@@ -1,12 +1,8 @@
 import { useState } from 'react';
 import { FileText, MessageSquare, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import DocumentUploader from '@/components/DocumentUploader';
-import PDFViewer from '@/components/PDFViewer';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { extractTextFromPDF } from '@/services/pdfService';
-import { PageContent } from '@/types/pdf';
 import Navbar from '@/components/Navbar';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -14,44 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>('viewer');
 
-  const handleFileUpload = async (file: File) => {
-    setIsLoading(true);
-    setPdfFile(file);
-    
-    try {
-      if (file.type === 'application/pdf') {
-        const result = await extractTextFromPDF(file);
-        navigate('/chat', { 
-          state: { 
-            pdfText: result.fullText,
-            pageContents: result.pageContents 
-          } 
-        });
-        toast({
-          title: "Success",
-          description: "Document uploaded successfully. Starting chat...",
-        });
-      } else {
-        toast({
-          title: "Unsupported Format",
-          description: "Currently only PDF files are supported.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Error extracting text:', error);
-      toast({
-        title: "Error",
-        description: "Failed to process the document. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const handleGetStarted = () => {
+    navigate('/chat');
   };
 
   return (
@@ -67,7 +28,13 @@ const Index = () => {
             Upload documents to AskNotes.AI and start intelligent conversations.
             Smart, simple, and adorable.
           </p>
-          <DocumentUploader onFileUpload={handleFileUpload} isLoading={isLoading} />
+          <Button 
+            onClick={handleGetStarted}
+            size="lg"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+          >
+            Get Started
+          </Button>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -95,29 +62,6 @@ const Index = () => {
             </p>
           </Card>
         </div>
-
-        {pdfFile && (
-          <div className="mt-16">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <div className="border-b px-6 py-3">
-                <TabsList className="grid grid-cols-2">
-                  <TabsTrigger value="viewer" className="flex items-center">
-                    <FileText className="mr-2 h-4 w-4" />
-                    PDF Viewer
-                  </TabsTrigger>
-                  <TabsTrigger value="chat" className="flex items-center">
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Ask Questions
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-              
-              <TabsContent value="viewer" className="p-6">
-                <PDFViewer file={pdfFile} />
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
       </main>
     </div>
   );
