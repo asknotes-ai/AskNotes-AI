@@ -1,4 +1,3 @@
-
 /**
  * Service for interacting with Hugging Face Inference API to answer questions
  */
@@ -15,24 +14,27 @@ export const generateAnswer = async (
 ): Promise<string> => {
   try {
     if (!context || context.trim() === '') {
-      return "I couldn't find relevant information in the document to answer your question. Please try asking something else or upload a document with more content.";
+      return "I don't see any content to work with in the document yet. Could you try uploading a document first? I'd love to help answer your questions! 🤗";
     }
 
-    // Enhanced prompt for better context understanding and summarization
-    const prompt = `<s>[INST] You are a helpful assistant that answers questions based on the provided context. 
-If the question asks for more details, provide a comprehensive answer.
-If asked to summarize, provide a concise summary.
-If you don't know the answer, just say you don't know.
+    // Enhanced prompt for more friendly and detailed responses
+    const prompt = `<s>[INST] You are a friendly and knowledgeable assistant who loves to help people understand documents. 
+Your responses should be:
+- Warm and engaging, using a friendly tone
+- Well-structured with bullet points or sections when appropriate
+- Detailed but clear, avoiding jargon unless necessary
+- Adding emoji occasionally to keep things light (but not too many!)
 
-Context: ${context}
+Context from the document: ${context}
 
 Question: ${question}
 
-Please provide a response that:
-1. Directly answers the question using information from the context
-2. If asked for details, includes relevant supporting information
-3. If asked to summarize, provides a clear and concise summary
-4. Mentions if certain information is not available in the context [/INST]`;
+Please provide a helpful response that:
+1. Starts with a friendly greeting or acknowledgment
+2. Directly addresses the question using information from the context
+3. Adds relevant examples or explanations when helpful
+4. Organizes information in an easy-to-read format
+5. Ends with an invitation for follow-up questions if needed [/INST]`;
 
     const response = await fetch(
       "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
@@ -44,10 +46,11 @@ Please provide a response that:
         body: JSON.stringify({
           inputs: prompt,
           parameters: {
-            max_new_tokens: 500, // Increased for more detailed responses
-            temperature: 0.3,
+            max_new_tokens: 800, // Increased for more detailed responses
+            temperature: 0.4, // Slightly reduced for more focused responses
             top_p: 0.95,
             do_sample: true,
+            repetition_penalty: 1.15, // Added to reduce repetitive phrases
           },
         }),
       }
@@ -63,7 +66,7 @@ Please provide a response that:
     if (Array.isArray(result) && result.length > 0 && result[0].generated_text) {
       const fullResponse = result[0].generated_text;
       const answerPart = fullResponse.split("[/INST]")[1]?.trim() || fullResponse;
-      return answerPart;
+      return formatResponse(answerPart);
     }
     
     return enhancedLocalAnswering(context, question);
@@ -73,118 +76,188 @@ Please provide a response that:
   }
 };
 
-/**
- * Enhanced local answering function that provides more detailed responses
- * when the AI API is unavailable
- */
+// New helper function to format responses nicely
+const formatResponse = (response: string): string => {
+  // Add emoji based on content type
+  let formattedResponse = response;
+  
+  // Add emoji for different types of responses
+  if (response.toLowerCase().includes('summary')) {
+    formattedResponse = "📑 " + formattedResponse;
+  } else if (response.toLowerCase().includes('example')) {
+    formattedResponse = "💡 " + formattedResponse;
+  } else if (response.toLowerCase().includes('important')) {
+    formattedResponse = "⭐ " + formattedResponse;
+  } else {
+    formattedResponse = "🤓 " + formattedResponse;
+  }
+  
+  // Add a friendly closing if it doesn't already have one
+  if (!formattedResponse.toLowerCase().includes('let me know') && 
+      !formattedResponse.toLowerCase().includes('feel free')) {
+    formattedResponse += "\n\n✨ Feel free to ask if you need any clarification!";
+  }
+  
+  return formattedResponse;
+};
+
+// Enhanced local answering function for when API is unavailable
 const enhancedLocalAnswering = (context: string, question: string): string => {
-  // Normalize the question and context to lowercase for better matching
+  const questionType = identifyQuestionType(question);
+  const relevantContext = findRelevantContext(context, question);
+  
+  let response = "👋 Here's what I found in the document:\n\n";
+  
+  if (questionType === 'summary') {
+    response = "📚 Here's a friendly summary:\n\n" + generateSummary(relevantContext);
+  } else if (questionType === 'specific') {
+    response = "🔍 I found this specific information:\n\n" + relevantContext;
+  } else {
+    response = "💡 Based on the document:\n\n" + relevantContext;
+  }
+  
+  return response + "\n\n✨ Let me know if you'd like to know more!";
+};
+
+// Helper function to identify question type
+const identifyQuestionType = (question: string): 'summary' | 'specific' | 'general' => {
   const questionLower = question.toLowerCase();
-  const contextLower = context.toLowerCase();
+  if (questionLower.includes('summarize') || questionLower.includes('summary')) {
+    return 'summary';
+  }
+  if (questionLower.includes('what') || questionLower.includes('when') || 
+      questionLower.includes('where') || questionLower.includes('who') ||
+      questionLower.includes('how') || questionLower.includes('why')) {
+    return 'specific';
+  }
+  return 'general';
+};
+
+// Helper function to generate a friendly summary
+const generateSummary = (context: string): string => {
+  const paragraphs = context.split('\n\n').filter(p => p.trim().length > 0);
   
-  // Handle summarization requests
-  if (questionLower.includes("summarize") || questionLower.includes("summary")) {
-    return generateSummary(context);
+  if (paragraphs.length <= 1) {
+    return context;
   }
   
-  // Extract paragraphs for more context
-  const paragraphs = context.split(/\n\n+/).filter(p => p.trim().length > 10);
+  return `${paragraphs[0]}\n\n🔑 Key points:\n${
+    paragraphs.slice(1).map(p => `• ${p.trim()}`).join('\n')
+  }`;
+};
+
+/**
+ * Find relevant context from PDF text based on user's question
+ * @param pdfText The full PDF text
+ * @param question The user's question
+ * @returns Relevant context from the PDF
+ */
+const findRelevantContext = (pdfText: string, question: string): string => {
+  if (!pdfText || pdfText.trim() === '') {
+    return '';
+  }
   
-  // Get keywords from the question (excluding common words)
-  const keywords = questionLower
-    .replace(/[^\w\s]/g, '')
-    .split(' ')
-    .filter(word => word.length > 3 && !['what', 'when', 'where', 'which', 'who', 'whom', 'whose', 'why', 'how', 'does', 'did', 'about', 'with', 'can', 'could', 'would', 'should', 'tell', 'explain', 'describe', 'give'].includes(word));
+  // Normalize the question
+  const questionLower = question.toLowerCase().trim();
   
+  // Check if it's a summarization request
+  if (questionLower.includes('summarize') || questionLower.includes('summary')) {
+    return pdfText.length > 8000 ? pdfText.substring(0, 8000) : pdfText;
+  }
+  
+  // Extract keywords from the question
+  const keywords = extractKeywords(questionLower);
+  
+  // If no keywords were found, return a chunk of the document
   if (keywords.length === 0) {
-    keywords.push(...questionLower.split(' ').filter(word => word.length > 3));
+    console.log("No keywords found in question");
+    return pdfText.length > 5000 ? pdfText.substring(0, 5000) : pdfText;
   }
   
-  // Find most relevant paragraphs
+  console.log("Keywords extracted:", keywords);
+  
+  // Split text into paragraphs
+  const paragraphs = pdfText.split(/\n\n+/).filter(p => p.trim().length > 0);
+  
+  // Score each paragraph based on keyword matches
   const scoredParagraphs = paragraphs.map(paragraph => {
     const paragraphLower = paragraph.toLowerCase();
     let score = 0;
     
+    // Score based on keyword frequency
     keywords.forEach(keyword => {
       const regex = new RegExp(keyword, 'gi');
       const matches = paragraphLower.match(regex);
       if (matches) {
-        score += matches.length * 2;
+        score += matches.length;
       }
     });
     
-    // Boost score for paragraphs that contain exact phrases from the question
-    const phrases = extractPhrases(questionLower);
-    phrases.forEach(phrase => {
-      if (paragraphLower.includes(phrase)) {
-        score += phrase.split(' ').length * 3;
+    // Bonus points for paragraphs that contain multiple keywords
+    let uniqueKeywordsFound = 0;
+    keywords.forEach(keyword => {
+      if (paragraphLower.includes(keyword)) {
+        uniqueKeywordsFound++;
       }
     });
+    
+    score += uniqueKeywordsFound * 2; // Boost paragraphs with multiple keywords
     
     return { paragraph, score };
   });
   
-  // Sort paragraphs by relevance
-  const relevantParagraphs = scoredParagraphs
+  // Sort by relevance score and take top results
+  const topParagraphs = scoredParagraphs
     .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
+    .slice(0, 5) // Increase the number of paragraphs for better context
     .filter(item => item.score > 0)
     .map(item => item.paragraph);
   
-  if (relevantParagraphs.length === 0) {
-    return "I couldn't find specific information about that in the document. The document doesn't appear to contain content related to your question. Could you try rephrasing your question or asking about something else mentioned in the document?";
+  console.log(`Found ${topParagraphs.length} relevant paragraphs`);
+  
+  // If no relevant paragraphs found, return a portion of the text
+  if (topParagraphs.length === 0) {
+    return pdfText.length > 5000 ? pdfText.substring(0, 5000) : pdfText;
   }
   
-  // Construct a more detailed answer
-  let answer = "Based on the document, I found the following information:\n\n";
-  
-  relevantParagraphs.forEach((paragraph, index) => {
-    answer += `${paragraph}\n\n`;
-  });
-  
-  // Add a conclusion if multiple paragraphs were found
-  if (relevantParagraphs.length > 1) {
-    answer += "These sections from the document appear most relevant to your question. If you need more specific information, please try asking a more focused question.";
-  }
-  
-  return answer;
+  // Return the combined context
+  return topParagraphs.join('\n\n');
 };
 
 /**
- * Generate a summary of the provided content
+ * Extract meaningful keywords from a question
  */
-const generateSummary = (context: string): string => {
-  // If context is too short, return it as is
-  if (context.length < 500) {
-    return `Summary of the document: ${context}`;
+const extractKeywords = (question: string): string[] => {
+  // Remove question words and common stopwords
+  const stopwords = ['what', 'when', 'where', 'which', 'who', 'whom', 'whose', 'why', 'how', 
+                     'does', 'did', 'do', 'is', 'are', 'was', 'were', 'am', 'be', 'being', 'been',
+                     'can', 'could', 'will', 'would', 'shall', 'should', 'may', 'might', 'must',
+                     'about', 'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'and', 'or',
+                     'the', 'a', 'an', 'this', 'that', 'these', 'those', 'tell', 'explain', 'describe',
+                     'provide', 'give', 'me', 'please', 'information', 'details', 'regarding'];
+  
+  // Clean up the question and split into words
+  const words = question
+    .replace(/[^\w\s]/g, '')
+    .split(' ')
+    .filter(word => word.length > 2) // Only words with 3+ characters
+    .filter(word => !stopwords.includes(word))
+    .map(word => word.toLowerCase());
+  
+  // Extract 2-3 word phrases that might be important
+  const phrases = [];
+  for (let i = 0; i < words.length - 1; i++) {
+    if (!stopwords.includes(words[i]) && !stopwords.includes(words[i+1])) {
+      phrases.push(`${words[i]} ${words[i+1]}`);
+    }
+    
+    if (i < words.length - 2 && !stopwords.includes(words[i]) && 
+        !stopwords.includes(words[i+1]) && !stopwords.includes(words[i+2])) {
+      phrases.push(`${words[i]} ${words[i+1]} ${words[i+2]}`);
+    }
   }
   
-  // Extract paragraphs and select the most important ones
-  const paragraphs = context.split(/\n\n+/).filter(p => p.trim().length > 10);
-  
-  if (paragraphs.length <= 3) {
-    return `Summary of the document: ${paragraphs.join("\n\n")}`;
-  }
-  
-  // Take first paragraph (often contains introduction)
-  const introduction = paragraphs[0];
-  
-  // Take a middle paragraph (often contains key information)
-  const middleIndex = Math.floor(paragraphs.length / 2);
-  const middleParagraph = paragraphs[middleIndex];
-  
-  // Take last paragraph (often contains conclusion)
-  const conclusion = paragraphs[paragraphs.length - 1];
-  
-  return `Summary of the document:
-
-${introduction}
-
-${middleParagraph}
-
-${conclusion}
-
-This summary includes the introduction, key content, and conclusion from the document. The full document contains more details.`;
+  return [...new Set([...words, ...phrases])]; // Remove duplicates
 };
 
 /**
@@ -250,4 +323,3 @@ const simplifiedAnswering = (context: string, question: string): string => {
   
   return `Based on the document: ${mostRelevantSentence.sentence}`;
 };
-
