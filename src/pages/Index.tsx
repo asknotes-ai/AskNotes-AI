@@ -1,15 +1,12 @@
-import { useState } from 'react';
+
 import { FileText, MessageSquare, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Navbar from '@/components/Navbar';
 import { Card } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const handleGetStarted = () => {
     navigate('/chat');

@@ -1,32 +1,20 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Send, ArrowLeft, ExternalLink } from 'lucide-react';
+import { MessageSquare, Send } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
-
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'bot';
-  timestamp: Date;
-}
+import { ChatMessage } from './ChatSessionManager';
 
 interface ChatInterfaceProps {
-  pdfText: string;
-  onAskQuestion: (question: string) => Promise<string>;
+  messages: ChatMessage[];
+  onSendMessage: (message: string) => Promise<void>;
   isLoading: boolean;
+  pdfText: string;
 }
 
-const ChatInterface = ({ pdfText, onAskQuestion, isLoading }: ChatInterfaceProps) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: '👋 Hello! I am AskNoteBot. I can help you understand your document better. What would you like to know?',
-      sender: 'bot',
-      timestamp: new Date(),
-    },
-  ]);
+const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInterfaceProps) => {
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -53,44 +41,18 @@ const ChatInterface = ({ pdfText, onAskQuestion, isLoading }: ChatInterfaceProps
       return;
     }
     
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: inputValue,
-      sender: 'user',
-      timestamp: new Date(),
-    };
-    
-    setMessages((prev) => [...prev, userMessage]);
+    const question = inputValue.trim();
     setInputValue('');
     
     try {
-      const response = await onAskQuestion(inputValue);
-      
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: response,
-        sender: 'bot',
-        timestamp: new Date(),
-      };
-      
-      setMessages((prev) => [...prev, botMessage]);
+      await onSendMessage(question);
     } catch (error) {
-      console.error('Error getting answer:', error);
-      
+      console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: "Failed to get an answer. Please try again.",
+        description: "Failed to send message. Please try again.",
         variant: "destructive"
       });
-      
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: 'Sorry, I encountered an error while processing your question. Please try again.',
-        sender: 'bot',
-        timestamp: new Date(),
-      };
-      
-      setMessages((prev) => [...prev, errorMessage]);
     }
   };
 
@@ -99,37 +61,20 @@ const ChatInterface = ({ pdfText, onAskQuestion, isLoading }: ChatInterfaceProps
   };
 
   return (
-    <div className="flex h-full">
-      <div className="w-64 border-r bg-gray-50 p-4">
-        <div className="border rounded-lg p-4 mb-4 bg-white">
-          <div className="flex items-center justify-center mb-2">
-            <span className="text-blue-600">Drop PDF here</span>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.length === 0 ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center p-8 rounded-lg max-w-md">
+              <MessageSquare className="mx-auto h-12 w-12 text-blue-600 mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Your conversation will appear here</h3>
+              <p className="text-gray-600">
+                Ask questions about your document to get started.
+              </p>
+            </div>
           </div>
-          <Button variant="outline" className="w-full">
-            Browse
-          </Button>
-        </div>
-        
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-sm text-gray-600">
-            Chat History (0/10)
-          </div>
-          <Button variant="ghost" size="sm">
-            New Chat
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col">
-        <div className="border-b p-4">
-          <Button variant="ghost" className="flex items-center text-gray-600">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
+        ) : (
+          messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${
@@ -152,7 +97,7 @@ const ChatInterface = ({ pdfText, onAskQuestion, isLoading }: ChatInterfaceProps
                             onClick={() => handleLinkClick(href || '')}
                             className="text-blue-600 hover:underline flex items-center"
                           >
-                            {children} <ExternalLink className="ml-1 h-3 w-3" />
+                            {children}
                           </button>
                         ),
                       }}
@@ -175,36 +120,36 @@ const ChatInterface = ({ pdfText, onAskQuestion, isLoading }: ChatInterfaceProps
                 </p>
               </div>
             </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <form 
-          className="border-t p-4 flex items-center gap-2"
-          onSubmit={handleSubmit}
-        >
-          <Input
-            type="text"
-            placeholder={
-              !pdfText
-                ? 'Upload a PDF first to ask questions'
-                : isLoading
-                ? 'Processing...'
-                : 'Ask a question about your document...'
-            }
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            className="flex-1"
-            disabled={isLoading || !pdfText}
-          />
-          <Button 
-            type="submit"
-            disabled={isLoading || !inputValue.trim() || !pdfText}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
+          ))
+        )}
+        <div ref={messagesEndRef} />
       </div>
+
+      <form 
+        className="border-t p-4 flex items-center gap-2"
+        onSubmit={handleSubmit}
+      >
+        <Input
+          type="text"
+          placeholder={
+            !pdfText
+              ? 'Upload a document first to ask questions'
+              : isLoading
+              ? 'Processing...'
+              : 'Ask a question about your document...'
+          }
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          className="flex-1"
+          disabled={isLoading || !pdfText}
+        />
+        <Button 
+          type="submit"
+          disabled={isLoading || !inputValue.trim() || !pdfText}
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </form>
     </div>
   );
 };
