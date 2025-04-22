@@ -13,9 +13,12 @@ const Navbar = () => {
         <div className="text-sm text-gray-500">
           Turning documents into conversations: smart, simple & adorable
         </div>
-        <button className="text-gray-700 font-medium">
+        <Link 
+          to="/chat" 
+          className="text-gray-700 font-medium hover:text-blue-600 transition-colors"
+        >
           Open Chat
-        </button>
+        </Link>
       </div>
     </nav>
   );

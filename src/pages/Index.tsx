@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FileText, MessageSquare, History } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import DocumentUploader from '@/components/DocumentUploader';
 import PDFViewer from '@/components/PDFViewer';
 import ChatInterface from '@/components/ChatInterface';
@@ -12,6 +13,7 @@ import Navbar from '@/components/Navbar';
 import { Card } from '@/components/ui/card';
 
 const Index = () => {
+  const navigate = useNavigate();
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfText, setPdfText] = useState<string>('');
   const [pageContents, setPageContents] = useState<PageContent[]>([]);
@@ -30,6 +32,7 @@ const Index = () => {
         const result = await extractTextFromPDF(file);
         text = result.fullText;
         pages = result.pageContents;
+        navigate('/chat', { state: { pdfText: text } });
       } else {
         console.log('File type detected:', file.type);
         text = 'Document type support coming soon. Currently only PDF files are fully supported.';
