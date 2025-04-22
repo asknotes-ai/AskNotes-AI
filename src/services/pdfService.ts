@@ -27,7 +27,7 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
       const textItems = textContent.items.map(item => 'str' in item ? item.str : '');
       const pageText = textItems.join(' ');
       
-      fullText += pageText + ' ';
+      fullText += pageText + '\n\n';
     }
     
     return fullText.trim();
@@ -38,43 +38,117 @@ export const extractTextFromPDF = async (file: File): Promise<string> => {
 };
 
 /**
- * Simple text-based search function to find relevant context from PDF text
+ * Find relevant context from PDF text based on user's question
  * @param pdfText The full PDF text
  * @param question The user's question
  * @returns Relevant context from the PDF
  */
 export const findRelevantContext = (pdfText: string, question: string): string => {
-  // Get keywords from the question (simple approach)
-  const keywords = question
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '')
-    .split(' ')
-    .filter(word => word.length > 3 && !['what', 'when', 'where', 'which', 'who', 'whom', 'whose', 'why', 'how', 'does', 'did', 'about', 'with'].includes(word));
+  if (!pdfText || pdfText.trim() === '') {
+    return '';
+  }
   
-  // Split PDF text into sentences (simple approach)
-  const sentences = pdfText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  // Normalize the question
+  const questionLower = question.toLowerCase().trim();
   
-  // Score each sentence based on keyword matches
-  const scoredSentences = sentences.map(sentence => {
-    const sentenceLower = sentence.toLowerCase();
+  // Check if it's a summarization request
+  if (questionLower.includes('summarize') || questionLower.includes('summary')) {
+    return pdfText.length > 8000 ? pdfText.substring(0, 8000) : pdfText;
+  }
+  
+  // Extract keywords from the question
+  const keywords = extractKeywords(questionLower);
+  
+  // If no keywords were found, return a chunk of the document
+  if (keywords.length === 0) {
+    console.log("No keywords found in question");
+    return pdfText.length > 5000 ? pdfText.substring(0, 5000) : pdfText;
+  }
+  
+  console.log("Keywords extracted:", keywords);
+  
+  // Split text into paragraphs
+  const paragraphs = pdfText.split(/\n\n+/).filter(p => p.trim().length > 0);
+  
+  // Score each paragraph based on keyword matches
+  const scoredParagraphs = paragraphs.map(paragraph => {
+    const paragraphLower = paragraph.toLowerCase();
     let score = 0;
     
+    // Score based on keyword frequency
     keywords.forEach(keyword => {
-      if (sentenceLower.includes(keyword)) {
-        score += 1;
+      const regex = new RegExp(keyword, 'gi');
+      const matches = paragraphLower.match(regex);
+      if (matches) {
+        score += matches.length;
       }
     });
     
-    return { sentence, score };
+    // Bonus points for paragraphs that contain multiple keywords
+    let uniqueKeywordsFound = 0;
+    keywords.forEach(keyword => {
+      if (paragraphLower.includes(keyword)) {
+        uniqueKeywordsFound++;
+      }
+    });
+    
+    score += uniqueKeywordsFound * 2; // Boost paragraphs with multiple keywords
+    
+    return { paragraph, score };
   });
   
-  // Sort by score and take top results
-  const topSentences = scoredSentences
+  // Sort by relevance score and take top results
+  const topParagraphs = scoredParagraphs
     .sort((a, b) => b.score - a.score)
-    .slice(0, 10)
-    .map(item => item.sentence);
+    .slice(0, 5) // Increase the number of paragraphs for better context
+    .filter(item => item.score > 0)
+    .map(item => item.paragraph);
   
-  return topSentences.join('. ');
+  console.log(`Found ${topParagraphs.length} relevant paragraphs`);
+  
+  // If no relevant paragraphs found, return a portion of the text
+  if (topParagraphs.length === 0) {
+    return pdfText.length > 5000 ? pdfText.substring(0, 5000) : pdfText;
+  }
+  
+  // Return the combined context
+  return topParagraphs.join('\n\n');
+};
+
+/**
+ * Extract meaningful keywords from a question
+ */
+const extractKeywords = (question: string): string[] => {
+  // Remove question words and common stopwords
+  const stopwords = ['what', 'when', 'where', 'which', 'who', 'whom', 'whose', 'why', 'how', 
+                     'does', 'did', 'do', 'is', 'are', 'was', 'were', 'am', 'be', 'being', 'been',
+                     'can', 'could', 'will', 'would', 'shall', 'should', 'may', 'might', 'must',
+                     'about', 'with', 'for', 'to', 'from', 'in', 'on', 'at', 'by', 'and', 'or',
+                     'the', 'a', 'an', 'this', 'that', 'these', 'those', 'tell', 'explain', 'describe',
+                     'provide', 'give', 'me', 'please', 'information', 'details', 'regarding'];
+  
+  // Clean up the question and split into words
+  const words = question
+    .replace(/[^\w\s]/g, '')
+    .split(' ')
+    .filter(word => word.length > 2) // Only words with 3+ characters
+    .filter(word => !stopwords.includes(word))
+    .map(word => word.toLowerCase());
+  
+  // Extract 2-3 word phrases that might be important
+  const phrases = [];
+  for (let i = 0; i < words.length - 1; i++) {
+    if (!stopwords.includes(words[i]) && !stopwords.includes(words[i+1])) {
+      phrases.push(`${words[i]} ${words[i+1]}`);
+    }
+    
+    if (i < words.length - 2 && !stopwords.includes(words[i]) && 
+        !stopwords.includes(words[i+1]) && !stopwords.includes(words[i+2])) {
+      phrases.push(`${words[i]} ${words[i+1]} ${words[i+2]}`);
+    }
+  }
+  
+  return [...new Set([...words, ...phrases])]; // Remove duplicates
 };
 
 /**
