@@ -1,4 +1,3 @@
-
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set the PDF.js worker path
@@ -48,71 +47,35 @@ export const findRelevantContext = (pdfText: string, question: string): string =
     return '';
   }
   
-  // Normalize the question
-  const questionLower = question.toLowerCase().trim();
-  
-  // Check if it's a summarization request
-  if (questionLower.includes('summarize') || questionLower.includes('summary')) {
-    return pdfText.length > 8000 ? pdfText.substring(0, 8000) : pdfText;
-  }
-  
-  // Extract keywords from the question
-  const keywords = extractKeywords(questionLower);
-  
-  // If no keywords were found, return a chunk of the document
-  if (keywords.length === 0) {
-    console.log("No keywords found in question");
-    return pdfText.length > 5000 ? pdfText.substring(0, 5000) : pdfText;
-  }
-  
-  console.log("Keywords extracted:", keywords);
+  // Normalize the question/search term
+  const searchTerm = question.toLowerCase().trim();
   
   // Split text into paragraphs
   const paragraphs = pdfText.split(/\n\n+/).filter(p => p.trim().length > 0);
   
-  // Score each paragraph based on keyword matches
-  const scoredParagraphs = paragraphs.map(paragraph => {
+  // Find paragraphs that contain the exact topic
+  const exactMatches = paragraphs.filter(paragraph => {
     const paragraphLower = paragraph.toLowerCase();
-    let score = 0;
-    
-    // Score based on keyword frequency
-    keywords.forEach(keyword => {
-      const regex = new RegExp(keyword, 'gi');
-      const matches = paragraphLower.match(regex);
-      if (matches) {
-        score += matches.length;
-      }
-    });
-    
-    // Bonus points for paragraphs that contain multiple keywords
-    let uniqueKeywordsFound = 0;
-    keywords.forEach(keyword => {
-      if (paragraphLower.includes(keyword)) {
-        uniqueKeywordsFound++;
-      }
-    });
-    
-    score += uniqueKeywordsFound * 2; // Boost paragraphs with multiple keywords
-    
-    return { paragraph, score };
+    // Look for topic definitions (e.g., "Bots:", "1. Bots", "• Bots")
+    const topicPattern = new RegExp(`(^|\\n|\\d+\\.|•|\\*)\\s*${searchTerm}\\b[:\\s]`, 'i');
+    return topicPattern.test(paragraph);
   });
-  
-  // Sort by relevance score and take top results
-  const topParagraphs = scoredParagraphs
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5) // Increase the number of paragraphs for better context
-    .filter(item => item.score > 0)
-    .map(item => item.paragraph);
-  
-  console.log(`Found ${topParagraphs.length} relevant paragraphs`);
-  
-  // If no relevant paragraphs found, return a portion of the text
-  if (topParagraphs.length === 0) {
-    return pdfText.length > 5000 ? pdfText.substring(0, 5000) : pdfText;
+
+  if (exactMatches.length > 0) {
+    return exactMatches.join('\n\n');
   }
   
-  // Return the combined context
-  return topParagraphs.join('\n\n');
+  // If no exact topic match, find paragraphs containing the term
+  const relatedMatches = paragraphs.filter(paragraph => {
+    const paragraphLower = paragraph.toLowerCase();
+    return paragraphLower.includes(searchTerm);
+  });
+  
+  if (relatedMatches.length > 0) {
+    return relatedMatches.join('\n\n');
+  }
+  
+  return `No specific information found about "${searchTerm}" in the document.`;
 };
 
 /**
