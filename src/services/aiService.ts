@@ -1,4 +1,3 @@
-
 /**
  * Service for interacting with Hugging Face Inference API to answer questions
  */
@@ -18,26 +17,33 @@ export const generateAnswer = async (
       return "I couldn't find relevant information in the document to answer your question.";
     }
 
-    // In a production app, you would call a proper API here
-    // This is a simplified implementation using Hugging Face Inference API
+    // Enhanced prompt for better context understanding and summarization
+    const prompt = `<s>[INST] You are a helpful assistant that answers questions based on the provided context. 
+If the question asks for more details, provide a comprehensive answer.
+If asked to summarize, provide a concise summary.
+If you don't know the answer, just say you don't know.
+
+Context: ${context}
+
+Question: ${question}
+
+Please provide a response that:
+1. Directly answers the question using information from the context
+2. If asked for details, includes relevant supporting information
+3. If asked to summarize, provides a clear and concise summary
+4. Mentions if certain information is not available in the context [/INST]`;
+
     const response = await fetch(
       "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // In a production app, you would securely store and retrieve this token
-          // Authorization: `Bearer ${process.env.HUGGINGFACE_API_TOKEN}`,
         },
         body: JSON.stringify({
-          inputs: `<s>[INST] You are a helpful assistant that answers questions based ONLY on the following context. 
-If you don't know the answer, just say you don't know.
-
-Context: ${context}
-
-Question: ${question} [/INST]`,
+          inputs: prompt,
           parameters: {
-            max_new_tokens: 250,
+            max_new_tokens: 500, // Increased for more detailed responses
             temperature: 0.3,
             top_p: 0.95,
             do_sample: true,
@@ -46,7 +52,6 @@ Question: ${question} [/INST]`,
       }
     );
 
-    // If the API is unavailable, fall back to a simple answer
     if (!response.ok) {
       console.warn("AI API unavailable, using fallback mechanism");
       return simplifiedAnswering(context, question);
@@ -55,7 +60,6 @@ Question: ${question} [/INST]`,
     const result = await response.json();
     
     if (Array.isArray(result) && result.length > 0 && result[0].generated_text) {
-      // Extract the answer part from the generated text
       const fullResponse = result[0].generated_text;
       const answerPart = fullResponse.split("[/INST]")[1]?.trim() || fullResponse;
       return answerPart;

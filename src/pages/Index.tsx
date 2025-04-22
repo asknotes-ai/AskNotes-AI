@@ -1,6 +1,6 @@
 
-import { useState, useEffect } from 'react';
-import PDFUploader from '@/components/PDFUploader';
+import { useState } from 'react';
+import DocumentUploader from '@/components/DocumentUploader';
 import PDFViewer from '@/components/PDFViewer';
 import ChatInterface from '@/components/ChatInterface';
 import { Button } from '@/components/ui/button';
@@ -21,12 +21,20 @@ const Index = () => {
     setPdfFile(file);
     
     try {
-      const text = await extractTextFromPDF(file);
+      let text = '';
+      // For now we'll only handle PDFs, later we can add support for other file types
+      if (file.type === 'application/pdf') {
+        text = await extractTextFromPDF(file);
+      } else {
+        // For demonstration, we'll show that other file types are recognized but not yet supported
+        console.log('File type detected:', file.type);
+        text = 'Document type support coming soon. Currently only PDF files are fully supported.';
+      }
+      
       setPdfText(text);
       console.log('Extracted text length:', text.length);
     } catch (error) {
       console.error('Error extracting text:', error);
-      // Handle error
     } finally {
       setIsLoading(false);
     }
