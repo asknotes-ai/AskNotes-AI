@@ -1,9 +1,9 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MessageSquare, Send, ArrowLeft, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { useToast } from '@/components/ui/toast';
 
 interface Message {
   id: string;
@@ -29,6 +29,7 @@ const ChatInterface = ({ pdfText, onAskQuestion, isLoading }: ChatInterfaceProps
   ]);
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -41,7 +42,16 @@ const ChatInterface = ({ pdfText, onAskQuestion, isLoading }: ChatInterfaceProps
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!inputValue.trim() || isLoading || !pdfText) return;
+    if (!inputValue.trim() || isLoading || !pdfText) {
+      if (!pdfText) {
+        toast({
+          title: "No Document",
+          description: "Please upload a document first to ask questions.",
+          variant: "destructive"
+        });
+      }
+      return;
+    }
     
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -66,6 +76,12 @@ const ChatInterface = ({ pdfText, onAskQuestion, isLoading }: ChatInterfaceProps
       setMessages((prev) => [...prev, botMessage]);
     } catch (error) {
       console.error('Error getting answer:', error);
+      
+      toast({
+        title: "Error",
+        description: "Failed to get an answer. Please try again.",
+        variant: "destructive"
+      });
       
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),

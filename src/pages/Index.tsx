@@ -3,20 +3,18 @@ import { FileText, MessageSquare, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DocumentUploader from '@/components/DocumentUploader';
 import PDFViewer from '@/components/PDFViewer';
-import ChatInterface from '@/components/ChatInterface';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { extractTextFromPDF } from '@/services/pdfService';
-import { generateAnswer } from '@/services/aiService';
 import { PageContent } from '@/types/pdf';
 import Navbar from '@/components/Navbar';
 import { Card } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [pdfText, setPdfText] = useState<string>('');
-  const [pageContents, setPageContents] = useState<PageContent[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('viewer');
 
@@ -25,102 +23,35 @@ const Index = () => {
     setPdfFile(file);
     
     try {
-      let text = '';
-      let pages: PageContent[] = [];
-      
       if (file.type === 'application/pdf') {
         const result = await extractTextFromPDF(file);
-        text = result.fullText;
-        pages = result.pageContents;
-        navigate('/chat', { state: { pdfText: text } });
+        navigate('/chat', { 
+          state: { 
+            pdfText: result.fullText,
+            pageContents: result.pageContents 
+          } 
+        });
+        toast({
+          title: "Success",
+          description: "Document uploaded successfully. Starting chat...",
+        });
       } else {
-        console.log('File type detected:', file.type);
-        text = 'Document type support coming soon. Currently only PDF files are fully supported.';
+        toast({
+          title: "Unsupported Format",
+          description: "Currently only PDF files are supported.",
+          variant: "destructive"
+        });
       }
-      
-      setPdfText(text);
-      setPageContents(pages);
-      console.log('Extracted text length:', text.length);
     } catch (error) {
       console.error('Error extracting text:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process the document. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleAskQuestion = async (question: string): Promise<string> => {
-    try {
-      const { context, pages } = findRelevantContext(pdfText, pageContents, question);
-      const answer = await generateAnswer(context, pages, question);
-      return answer;
-    } catch (error) {
-      console.error('Error answering question:', error);
-      return "I encountered an error while trying to answer your question. Please try again.";
-    }
-  };
-
-  const clearPDF = () => {
-    setPdfFile(null);
-    setPdfText('');
-    setPageContents([]);
-  };
-
-  const findRelevantContext = (
-    text: string,
-    pages: PageContent[],
-    query: string
-  ): { context: string, pages: number[] } => {
-    if (!text || text.trim() === '') {
-      return { context: '', pages: [] };
-    }
-    
-    const searchTerm = query.toLowerCase().trim();
-    
-    const paragraphs = text.split(/\n\n+/).filter(p => p.trim().length > 0);
-    
-    const exactMatches = paragraphs.filter(paragraph => {
-      const paragraphLower = paragraph.toLowerCase();
-      const topicPattern = new RegExp(`(^|\\n|\\d+\\.|•|\\*)\\s*${searchTerm}\\b[:\\s]`, 'i');
-      return topicPattern.test(paragraph);
-    });
-
-    let relevantParagraphs: string[] = [];
-    if (exactMatches.length > 0) {
-      relevantParagraphs = exactMatches;
-    } else {
-      const relatedMatches = paragraphs.filter(paragraph => {
-        const paragraphLower = paragraph.toLowerCase();
-        return paragraphLower.includes(searchTerm);
-      });
-      
-      if (relatedMatches.length > 0) {
-        relevantParagraphs = relatedMatches;
-      }
-    }
-    
-    if (relevantParagraphs.length === 0) {
-      return { 
-        context: `No specific information found about "${searchTerm}" in the document.`,
-        pages: [] 
-      };
-    }
-    
-    const matchedPages: number[] = [];
-    for (const paragraph of relevantParagraphs) {
-      for (const pageContent of pages) {
-        if (pageContent.text.includes(paragraph.substring(0, 100))) {
-          if (!matchedPages.includes(pageContent.pageNum)) {
-            matchedPages.push(pageContent.pageNum);
-          }
-          break;
-        }
-      }
-    }
-    
-    return {
-      context: relevantParagraphs.join('\n\n'),
-      pages: matchedPages.sort((a, b) => a - b)
-    };
   };
 
   return (
@@ -136,13 +67,7 @@ const Index = () => {
             Upload documents to AskNotes.AI and start intelligent conversations.
             Smart, simple, and adorable.
           </p>
-          <Button 
-            size="lg"
-            className="bg-blue-600 hover:bg-blue-700"
-            onClick={() => document.getElementById('fileInput')?.click()}
-          >
-            Get started now
-          </Button>
+          <DocumentUploader onFileUpload={handleFileUpload} isLoading={isLoading} />
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -189,14 +114,6 @@ const Index = () => {
               
               <TabsContent value="viewer" className="p-6">
                 <PDFViewer file={pdfFile} />
-              </TabsContent>
-              
-              <TabsContent value="chat" className="p-6">
-                <ChatInterface
-                  pdfText={pdfText}
-                  onAskQuestion={handleAskQuestion}
-                  isLoading={isLoading}
-                />
               </TabsContent>
             </Tabs>
           </div>

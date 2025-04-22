@@ -1,8 +1,8 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { File, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/use-toast';
 
 interface DocumentUploaderProps {
   onFileUpload: (file: File) => void;
@@ -12,6 +12,7 @@ interface DocumentUploaderProps {
 const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -39,19 +40,18 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
       const file = e.target.files[0];
       if (isValidFileType(file.type)) {
         onFileUpload(file);
+      } else {
+        toast({
+          title: "Invalid File Type",
+          description: "Please upload a PDF file.",
+          variant: "destructive"
+        });
       }
     }
   };
 
   const isValidFileType = (fileType: string): boolean => {
-    const validTypes = [
-      'application/pdf',
-      'application/vnd.ms-powerpoint',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
-    return validTypes.includes(fileType);
+    return fileType === 'application/pdf';
   };
 
   const handleButtonClick = () => {
@@ -78,7 +78,7 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
         type="file"
         ref={fileInputRef}
         className="hidden"
-        accept=".pdf,.ppt,.pptx,.doc,.docx"
+        accept=".pdf"
         onChange={handleFileSelect}
       />
       <Heart className="mx-auto h-16 w-16 text-cute-pink-dark mb-4 group-hover:animate-cute-bounce" />
@@ -94,7 +94,7 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
         {isLoading ? 'Processing...' : 'Browse cute files 💕'}
       </Button>
       <p className="mt-2 text-xs text-cute-lavender-dark">
-        Supported cutie formats: PDF, PowerPoint, Word
+        Supported cutie formats: PDF
       </p>
     </div>
   );
