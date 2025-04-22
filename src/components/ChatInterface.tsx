@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Send, Download } from 'lucide-react';
+import { MessageSquare, Send, Download, Bot, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
 import { ChatMessage } from './ChatSessionManager';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
@@ -64,11 +65,11 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
       .map(msg => `${msg.sender === 'user' ? 'You' : 'AskNoteBot'}: ${msg.text}\n`)
       .join('\n');
 
-    const blob = new Blob([chatContent], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const blob = new Blob([chatContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'chat-history.docx';
+    a.download = 'chat-history.txt';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -76,7 +77,7 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-background dark:bg-gray-900">
       <div className="flex justify-end p-2 border-b">
         <Button
           variant="outline"
@@ -106,13 +107,20 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
               key={message.id}
               className={`flex ${
                 message.sender === 'user' ? 'justify-end' : 'justify-start'
-              }`}
+              } items-start gap-2`}
             >
+              {message.sender === 'bot' && (
+                <Avatar className="h-8 w-8 bg-blue-600">
+                  <AvatarFallback>
+                    <Bot className="h-4 w-4 text-white" />
+                  </AvatarFallback>
+                </Avatar>
+              )}
               <div
                 className={`max-w-[85%] p-3 rounded-lg ${
                   message.sender === 'user'
                     ? 'bg-blue-600 text-white rounded-br-none'
-                    : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-none'
                 }`}
               >
                 {message.sender === 'bot' ? (
@@ -137,7 +145,7 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
                 )}
                 <p
                   className={`text-xs mt-1 ${
-                    message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
+                    message.sender === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
                   }`}
                 >
                   {message.timestamp.toLocaleTimeString([], {
@@ -146,6 +154,13 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
                   })}
                 </p>
               </div>
+              {message.sender === 'user' && (
+                <Avatar className="h-8 w-8 bg-blue-600">
+                  <AvatarFallback>
+                    <User className="h-4 w-4 text-white" />
+                  </AvatarFallback>
+                </Avatar>
+              )}
             </div>
           ))
         )}
@@ -153,7 +168,7 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
       </div>
 
       <form 
-        className="border-t p-4 flex items-center gap-2"
+        className="border-t p-4 flex items-center gap-2 bg-white dark:bg-gray-900"
         onSubmit={handleSubmit}
       >
         <Input

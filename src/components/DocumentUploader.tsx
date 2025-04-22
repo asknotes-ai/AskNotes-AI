@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { File, Heart, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface DocumentUploaderProps {
   onFileUpload: (file: File) => void;
@@ -63,7 +63,7 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
   return (
     <div
       className={cn(
-        "border-2 border-dashed rounded-xl p-6 text-center transition-all duration-300",
+        "border-2 border-dashed rounded-xl p-4 text-center transition-all duration-300",
         "hover:border-primary hover:shadow-lg hover:scale-[1.02]",
         "dark:border-gray-700 dark:hover:border-blue-500",
         "bg-gradient-to-br from-background to-background/50 backdrop-blur-sm",
@@ -84,11 +84,10 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
         onChange={handleFileSelect}
       />
       <div className="relative">
-        <FileText className="mx-auto h-12 w-12 text-primary mb-4 transform transition-transform group-hover:scale-110 duration-200" />
-        <h3 className="text-lg font-medium mb-2">
+        <FileText className="mx-auto h-8 w-8 text-primary mb-2 transform transition-transform group-hover:scale-110 duration-200" />
+        <h3 className="text-base font-medium mb-2">
           📄 Upload Document
         </h3>
-        <p className="text-sm text-muted-foreground mb-4">or</p>
         <Button 
           onClick={handleButtonClick} 
           disabled={isLoading}
@@ -96,9 +95,6 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
         >
           {isLoading ? 'Processing...' : 'Choose File'}
         </Button>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Supported formats: PDF
-        </p>
       </div>
     </div>
   );
