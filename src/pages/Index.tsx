@@ -13,22 +13,22 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-blue-50">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-white to-blue-50 dark:from-gray-900 dark:to-gray-800">
       <Navbar />
       
-      <main className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto text-center mb-16">
-          <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-violet-600 mb-4">
+      <main className="container mx-auto px-4 py-16 flex-grow">
+        <div className="max-w-4xl mx-auto text-center mb-20">
+          <h1 className="text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-violet-600 mb-6 leading-tight">
             Create AI-Powered Document Conversations 10X Faster
           </h1>
-          <p className="text-lg text-gray-600 mb-8">
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
             Upload documents to AskNotes.AI and start intelligent conversations.
             Smart, simple, and adorable.
           </p>
           <Button 
             onClick={handleGetStarted}
             size="lg"
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-6 text-lg"
           >
             Get Started
           </Button>
@@ -60,6 +60,14 @@ const Index = () => {
           </Card>
         </div>
       </main>
+
+      <footer className="border-t py-8 bg-white dark:bg-gray-900">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            © {new Date().getFullYear()} AskNotes.AI. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };

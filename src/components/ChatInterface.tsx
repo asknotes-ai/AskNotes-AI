@@ -1,8 +1,7 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MessageSquare, Send } from 'lucide-react';
+import { MessageSquare, Send, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
 import { ChatMessage } from './ChatSessionManager';
@@ -60,8 +59,36 @@ const ChatInterface = ({ messages, onSendMessage, isLoading, pdfText }: ChatInte
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const handleDownloadChat = () => {
+    const chatContent = messages
+      .map(msg => `${msg.sender === 'user' ? 'You' : 'AskNoteBot'}: ${msg.text}\n`)
+      .join('\n');
+
+    const blob = new Blob([chatContent], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'chat-history.docx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex flex-col h-full">
+      <div className="flex justify-end p-2 border-b">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadChat}
+          className="flex items-center gap-2"
+          disabled={messages.length === 0}
+        >
+          <Download className="h-4 w-4" />
+          Download Chat
+        </Button>
+      </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center">

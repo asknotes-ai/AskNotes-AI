@@ -63,12 +63,14 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
   return (
     <div
       className={cn(
-        "border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 group",
+        "border-2 border-dashed rounded-xl p-6 text-center transition-all duration-300",
+        "hover:border-primary hover:shadow-lg hover:scale-[1.02]",
+        "dark:border-gray-700 dark:hover:border-blue-500",
+        "bg-gradient-to-br from-background to-background/50 backdrop-blur-sm",
         isDragging 
-          ? "border-cute-pink-dark bg-cute-pink-light" 
-          : "border-cute-blue-dark bg-cute-blue-light/30",
-        "hover:scale-[1.02] hover:shadow-lg",
-        "animate-subtle-float"
+          ? "border-blue-500 bg-blue-50/10" 
+          : "border-gray-200",
+        "transform transition-transform duration-200 ease-in-out"
       )}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -81,21 +83,23 @@ const DocumentUploader = ({ onFileUpload, isLoading }: DocumentUploaderProps) =>
         accept=".pdf"
         onChange={handleFileSelect}
       />
-      <FileText className="mx-auto h-16 w-16 text-cute-pink-dark mb-4 group-hover:animate-cute-bounce" />
-      <h3 className="text-lg font-medium mb-2 text-cute-blue-dark">
-        📄 Drop your document here
-      </h3>
-      <p className="text-sm text-cute-lavender-dark mb-4">or</p>
-      <Button 
-        onClick={handleButtonClick} 
-        disabled={isLoading}
-        className="bg-cute-green-dark hover:bg-cute-green hover:scale-105 transition-transform"
-      >
-        {isLoading ? 'Processing...' : 'Choose File'}
-      </Button>
-      <p className="mt-2 text-xs text-cute-lavender-dark">
-        Supported formats: PDF
-      </p>
+      <div className="relative">
+        <FileText className="mx-auto h-12 w-12 text-primary mb-4 transform transition-transform group-hover:scale-110 duration-200" />
+        <h3 className="text-lg font-medium mb-2">
+          📄 Upload Document
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4">or</p>
+        <Button 
+          onClick={handleButtonClick} 
+          disabled={isLoading}
+          className="bg-primary hover:bg-primary/90 transition-all duration-200 transform hover:scale-105"
+        >
+          {isLoading ? 'Processing...' : 'Choose File'}
+        </Button>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Supported formats: PDF
+        </p>
+      </div>
     </div>
   );
 };
